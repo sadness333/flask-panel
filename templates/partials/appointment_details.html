@@ -1,0 +1,78 @@
+<div class="row">
+    <div class="col-md-6">
+        <div class="modal-pet-info mb-4">
+            <div class="d-flex align-items-center mb-3">
+                <img src="{{ pet.photoUrl }}" class="pet-avatar me-3" alt="{{ pet.name }}"
+                     onerror="this.src='https://via.placeholder.com/80'">
+                <div>
+                    <h5 class="mb-1">{{ pet.name }}</h5>
+                    <p class="mb-1 small">{{ pet.type }}, {{ pet.age }} лет</p>
+                    <p class="mb-0 small text-muted">{{ pet.breed }}</p>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="mb-2"><i class="fas fa-user me-2"></i>Владелец</h6>
+                <p class="mb-1">{{ owner.name }}</p>
+                <p class="mb-0 small text-muted">{{ owner.phone }}</p>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="mb-2"><i class="fas fa-calendar-alt me-2"></i>Детали приема</h6>
+                <p class="mb-1"><strong>Дата:</strong> {{ appointment.date|datetimeformat('%d.%m.%Y') }}</p>
+                <p class="mb-1"><strong>Время:</strong> {{ appointment.time }}</p>
+                <p class="mb-1"><strong>Причина:</strong> {{ appointment.reason }}</p>
+                {% if appointment.notes %}
+                <p class="mb-0"><strong>Заметки:</strong> {{ appointment.notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="d-flex justify-content-between mb-3">
+            <h6><i class="fas fa-file-medical me-2"></i>Мед. карта</h6>
+            <button class="btn btn-sm btn-outline-primary" 
+                    onclick="completeAppointment('{{ appointment.id }}')">
+                <i class="fas fa-check me-1"></i>Завершить прием
+            </button>
+        </div>
+        
+        <form id="healthRecordForm">
+            <div class="mb-3">
+                <label class="form-label">Тип записи</label>
+                <select class="form-select" name="type" required>
+                    <option value="VACCINATION">Вакцинация</option>
+                    <option value="TREATMENT">Лечение</option>
+                    <option value="SURGERY">Операция</option>
+                    <option value="CHECKUP">Осмотр</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Название</label>
+                <input type="text" class="form-control" name="title" required>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Описание</label>
+                <textarea class="form-control" name="description" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Дата</label>
+                <input type="date" class="form-control" name="date" required>
+            </div>
+            
+            <!-- Добавлено поле для даты истечения (необязательное) -->
+            <div class="mb-3">
+                <label class="form-label">Дата истечения (если применимо)</label>
+                <input type="date" class="form-control" name="expirationDate">
+            </div>
+            
+            <button type="button" class="btn btn-primary w-100"
+                    onclick="saveHealthRecord('{{ pet.id }}')">
+                Сохранить запись
+            </button>
+        </form>
+    </div>
+</div>

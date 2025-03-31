@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block title %}Расписание{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    .status-indicator {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+    }
+    
+    .schedule-card {
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .schedule-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .pet-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .modal-pet-info {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+    }
+    
+    .nutrition-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .health-record-card {
+        border-left: 4px solid;
+        transition: all 0.2s;
+    }
+    
+    .health-record-card:hover {
+        transform: translateX(5px);
+    }
+    
+    .vaccination { border-color: #28a745; }
+    .treatment { border-color: #17a2b8; }
+    .surgery { border-color: #dc3545; }
+    .checkup { border-color: #ffc107; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Заголовок и управление -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <h3 class="mb-3 mb-md-0">
+            <i class="fas fa-calendar-alt text-primary me-2"></i>
+            Расписание приёмов
+        </h3>
+        <div class="d-flex gap-2">
+            <input type="date" class="form-control" id="datePicker" 
+                   value="{{ selected_date }}" 
+                   onchange="window.location='?date='+this.value">
+            <button class="btn btn-primary" data-bs-toggle="modal" 
+                    data-bs-target="#scheduleSettingsModal">
+                <i class="fas fa-cog me-2"></i>Настройки
+            </button>
+        </div>
+    </div>
+
+    <!-- Информационная панель -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="status-indicator bg-success"></div>
+                        <small>Свободно</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="status-indicator bg-danger"></div>
+                        <small>Занято</small>
+                    </div>
+                </div>
+                <div class="mt-2 mt-md-0">
+                    <span class="badge bg-info">
+                        <i class="fas fa-paw me-1"></i>
+                        Запланировано: {{ booked_slots_count }} из {{ total_slots_count }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Сетка расписания -->
+    <div class="row g-3 mb-4">
+      {% if time_slots %}
+        {% for slot in time_slots %}
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="card schedule-card border-{{ 
+                'success' if slot.status == 'available' 
+                else 'danger' 
+            }} shadow-sm h-100"
+                 onclick="openSlotDetails('{{ slot.time }}', '{{ selected_date }}', '{{ slot.appointment_id if slot.appointment_id }}')">
+
+                 <div class="card-body text-center py-3">
+                    <h5 class="mb-1">{{ slot.time if slot.time != '--:--' else 'Закрыто' }}</h5>
+                    <p class="text-muted small mb-0">
+                        {{ status_translate[slot.status] }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-calendar-times fa-3x text-secondary mb-3"></i>
+            <h4 class="text-muted">Выходной день</h4>
+            <p class="text-muted">На выбранную дату приёмы не проводятся</p>
+        </div>
+    {% endif %}
+    </div>
+
+    <!-- Ближайшие приемы -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list-check text-primary me-2"></i>
+                Приемы
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if upcoming_appointments %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Питомец</th>
+                            <th>Причина</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appt in upcoming_appointments %}
+                        <tr>
+                            <td>{{ appt.date|datetimeformat('%d.%m.%Y') }} {{ appt.time }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ appt.petPhoto }}" 
+                                         class="pet-avatar me-2" 
+                                         alt="{{ appt.petName }}"
+                                         onerror="this.src='https://via.placeholder.com/40'">
+                                    <div>
+                                        <div>{{ appt.petName }}</div>
+                                        <small class="text-muted">{{ appt.petType }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ appt.reason }}</td>
+                            <td>
+                                <span class="badge bg-{{ 
+                                    'success' if appt.status == 'completed' 
+                                    else 'danger' if appt.status == 'canceled' 
+                                    else 'warning' 
+                                }}">
+                                    {{ status_translate.get(appt.status, appt.status) }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="openAppointmentDetails('{{ appt.id }}')"
+                                        title="Детали">
+                                    <i class="fas fa-notes-medical"></i>
+                                </button>
+                                {% if appt.status == 'pending' %}
+                                <button class="btn btn-sm btn-outline-success ms-1" 
+                                        onclick="completeAppointment('{{ appt.id }}')"
+                                        title="Завершить">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Нет предстоящих приемов</h5>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно деталей слота -->
+<div class="modal fade" id="slotDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="slotDetailsModalTitle">Детали приема</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="slotDetailsContent">
+                    <!-- Контент будет загружен динамически -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно настроек расписания -->
+<div class="modal fade" id="scheduleSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Настройки расписания</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleSettingsForm">
+                    <div class="mb-3">
+                        <label class="form-label">Рабочие дни</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="monday" name="working_days" value="monday" checked>
+                                <label class="form-check-label" for="monday">Пн</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="tuesday" name="working_days" value="tuesday" checked>
+                                <label class="form-check-label" for="tuesday">Вт</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="wednesday" name="working_days" value="wednesday" checked>
+                                <label class="form-check-label" for="wednesday">Ср</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="thursday" name="working_days" value="thursday" checked>
+                                <label class="form-check-label" for="thursday">Чт</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="friday" name="working_days" value="friday" checked>
+                                <label class="form-check-label" for="friday">Пт</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="saturday" name="working_days" value="saturday">
+                                <label class="form-check-label" for="saturday">Сб</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sunday" name="working_days" value="sunday">
+                                <label class="form-check-label" for="sunday">Вс</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="startTime" class="form-label">Начало приема</label>
+                            <input type="time" class="form-control" id="startTime" value="09:00">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="endTime" class="form-label">Конец приема</label>
+                            <input type="time" class="form-control" id="endTime" value="18:00">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="slotDuration" class="form-label">Длительность приема (мин)</label>
+                        <select class="form-select" id="slotDuration">
+                            <option value="15">15 минут</option>
+                            <option value="30" selected>30 минут</option>
+                            <option value="45">45 минут</option>
+                            <option value="60">1 час</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="exceptionDates" class="form-label">Исключения (нерабочие дни)</label>
+                        <input type="text" class="form-control" id="exceptionDates" placeholder="Выберите даты">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveScheduleSettings()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ru.js"></script>
+<script>
+    // Инициализация календаря для исключений
+    flatpickr("#exceptionDates", {
+        mode: "multiple",
+        dateFormat: "Y-m-d",
+        locale: "ru"
+    });
+
+    
+
+    // Загрузка текущих настроек
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/get-schedule-settings')
+            .then(response => response.json())
+            .then(data => {
+            document.querySelectorAll('input[name="working_days"]').forEach(checkbox => {
+                checkbox.checked = data.working_days.includes(checkbox.value);
+            });
+
+                if(data.base_schedule) {
+                    document.getElementById('startTime').value = data.base_schedule.start;
+                    document.getElementById('endTime').value = data.base_schedule.end;
+                    document.getElementById('slotDuration').value = data.base_schedule.slotDuration;
+                }
+            });
+    });
+
+    function openSlotDetails(time, date, appointmentId) {
+        const modal = new bootstrap.Modal(document.getElementById('slotDetailsModal'));
+        fetch(`/get-slot-details?time=${time}&date=${date}&appointmentId=${appointmentId || ''}`)
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('slotDetailsContent').innerHTML = html;
+                modal.show();
+            });
+    }
+
+    function openAppointmentDetails(appointmentId) {
+        const modal = new bootstrap.Modal(document.getElementById('slotDetailsModal'));
+        fetch(`/get-appointment-details?id=${appointmentId}`)
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('slotDetailsContent').innerHTML = html;
+                modal.show();
+            });
+    }
+
+    function saveScheduleSettings() {
+        const workingDays = Array.from(document.querySelectorAll('input[name="working_days"]:checked'))
+            .map(el => el.value);
+        const settings = {
+            working_days: workingDays,
+            base_schedule: {
+                start: document.getElementById('startTime').value,
+                end: document.getElementById('endTime').value,
+                slotDuration: document.getElementById('slotDuration').value
+            },
+            exceptions: document.getElementById('exceptionDates').value.split(', ')
+        };
+        fetch('/save-schedule-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        }).then(response => {
+            if(response.ok) {
+                window.location.reload();
+            }
+        });
+    }
+
+    function saveHealthRecord(petId) {
+        const formData = new FormData(document.getElementById('healthRecordForm'));
+        fetch(`/add-health-record/${petId}`, {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if(response.ok) {
+                window.location.reload();
+            }
+        });
+    }
+
+    function completeAppointment(appointmentId) {
+        fetch(`/complete-appointment/${appointmentId}`, {
+            method: 'POST'
+        }).then(response => {
+            if(response.ok) {
+                window.location.reload();
+            }
+        });
+    }
+
+    function toggleSlotStatus(time, date) {
+        fetch('/update-slot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                time: time,
+                date: date,
+            })
+        }).then(response => {
+            if(response.ok) window.location.reload();
+        });
+    }
+
+    function filterPets() {
+    const filterInput = document.getElementById('petFilter');
+    const select = document.getElementById('petSelect');
+
+    if (!filterInput || !select) {
+        console.error('Ошибка: не найден petFilter или petSelect');
+        return;
+    }
+
+    const filter = filterInput.value.toLowerCase().trim();
+    const allOptions = Array.from(select.options);
+    let visibleCount = 0;
+
+    for (let i = 1; i < allOptions.length; i++) {
+        const option = allOptions[i];
+        const searchText = option.getAttribute('data-search') || '';
+
+        if (filter === '' || searchText.includes(filter)) {
+            option.hidden = false;
+            visibleCount++;
+        } else {
+            option.hidden = true;
+        }
+    }
+
+    const placeholder = allOptions[0];
+    placeholder.hidden = visibleCount > 0 || filter.length > 0;
+    select.size = visibleCount > 0 ? Math.min(5, visibleCount + 1) : 1;
+
+    if (select.value && select.options[select.selectedIndex].hidden) {
+        select.value = "";
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('petFilter')) {
+        filterPets();
+    }
+});
+
+       
+</script>
+{% endblock %}
+{% endblock %}

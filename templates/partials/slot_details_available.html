@@ -1,0 +1,178 @@
+<form method="POST" action="{{ url_for('book_slot') }}">
+    <input type="hidden" name="date" value="{{ date }}">
+    <input type="hidden" name="time" value="{{ time }}">
+
+    <!-- Сообщения об ошибках -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-danger mb-4">
+                {% for message in messages %}
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Информация о времени -->
+    <div class="alert alert-primary bg-light border-primary mb-4">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-calendar-day text-primary"></i>
+                    <div>
+                        <small class="text-muted d-block">Дата</small>
+                        <strong>{{ date|datetimeformat('%d.%m.%Y') }}</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-clock text-primary"></i>
+                    <div>
+                        <small class="text-muted d-block">Время</small>
+                        <strong>{{ time }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Выбор питомца с фильтрацией -->
+    <div class="mb-4">
+        <label class="form-label fw-bold mb-3">
+            <i class="fas fa-paw me-2 text-muted"></i>
+            Выберите питомца
+        </label>
+        
+        <!-- Поле поиска -->
+        <div class="input-group mb-3">
+            <span class="input-group-text">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" 
+                   id="petFilter" 
+                   class="form-control" 
+                   placeholder="Поиск по кличке, типу или породе..."
+                   oninput="filterPets()"
+                   onpaste="filterPets()"
+                   oncut="filterPets()">
+        </div>
+
+        <select class="form-select form-select-lg" name="pet_id" id="petSelect" required size="5">
+            <option value="">   Выберите питомца   </option>
+            {% for pet in pets %}
+            <option value="{{ pet.id }}" 
+                    data-search="{{ pet.name.lower() }} {{ pet.type.lower() }} {{ pet.breed.lower() }} {{ pet.age }}">
+                {{ pet.name }} 
+                <small class="text-muted">
+                    ({{ pet.type }} • {{ pet.breed }} • Возраст: {{ pet.age }})
+                </small>
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Причина приема -->
+    <div class="mb-4">
+        <label class="form-label fw-bold mb-3">
+            <i class="fas fa-comment-medical me-2 text-muted"></i>
+            Причина визита
+        </label>
+        <textarea class="form-control form-control-lg" 
+                name="reason" 
+                rows="2" 
+                placeholder="Опишите основную причину приёма..."
+                required></textarea>
+    </div>
+
+    <!-- Дополнительные заметки -->
+    <div class="mb-4">
+        <label class="form-label fw-bold mb-3">
+            <i class="fas fa-notes-medical me-2 text-muted"></i>
+            Дополнительные заметки
+        </label>
+        <textarea class="form-control" 
+                name="notes" 
+                rows="3" 
+                placeholder="Можете добавить любую дополнительную информацию..."></textarea>
+        <small class="text-muted">Необязательное поле</small>
+    </div>
+
+    <!-- Кнопка отправки -->
+    <div class="d-grid mt-5">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save me-2"></i>
+            Сохранить запись
+        </button>
+    </div>
+</form>
+
+<style>
+.form-select-lg {
+    padding: 1rem 1.5rem;
+    border-radius: 10px;
+    height: auto;
+    max-height: 300px;
+    overflow-y: auto;
+    display: block;
+}
+
+.form-select-lg option {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #eee;
+    display: block !important;
+}
+
+.form-select-lg option[hidden] {
+    display: none !important;
+}
+
+.form-select-lg option small {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+</style>
+
+<script>
+function filterPets() {
+    try {
+        const filter = document.getElementById('petFilter').value.toLowerCase().trim();
+        const select = document.getElementById('petSelect');
+        const allOptions = Array.from(select.options);
+        let visibleCount = 0;
+
+        // Обрабатываем все опции, начиная с первой (пропускаем placeholder)
+        for (let i = 1; i < allOptions.length; i++) {
+            const option = allOptions[i];
+            const searchText = option.getAttribute('data-search') || '';
+            
+            if (filter === '' || searchText.includes(filter)) {
+                option.hidden = false;
+                visibleCount++;
+            } else {
+                option.hidden = true;
+            }
+        }
+
+        // Управляем placeholder
+        const placeholder = allOptions[0];
+        placeholder.hidden = visibleCount > 0 || filter.length > 0;
+        
+        // Обновляем размер списка
+        select.size = visibleCount > 0 ? Math.min(5, visibleCount + 1) : 1;
+        
+        // Сбрасываем выбор если текущий вариант скрыт
+        if (select.value && select.options[select.selectedIndex].hidden) {
+            select.value = "";
+        }
+    } catch (e) {
+        console.error('Filter error:', e);
+    }
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', filterPets);
+</script> 

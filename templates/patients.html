@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Мои пациенты{% endblock %}
+
+{% block content %}
+<div class="patients-container">
+    <!-- Фильтры -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" 
+                           class="form-control" 
+                           name="search" 
+                           placeholder="Поиск по имени..."
+                           value="{{ search_query }}">
+                </div>
+                
+                <div class="col-md-3">
+                    <select class="form-select" name="type">
+                        <option value="">Все типы</option>
+                        {% for type in pet_types %}
+                        <option value="{{ type }}" {{ 'selected' if type == selected_type }}>
+                            {{ type }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-2"></i>Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Список питомцев -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for pet in pets %}
+        <div class="col">
+            <div class="card shadow-sm h-100">
+                <img src="{{ pet.photoUrl }}" 
+                     class="card-img-top object-fit-cover" 
+                     alt="{{ pet.name }}"
+                     style="height: 300px;">
+                     
+                <div class="card-body">
+                    <h5 class="card-title">{{ pet.name }}</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-primary">{{ pet.type }}</span>
+                        <span class="text-muted small">{{ pet.age }} лет</span>
+                    </div>
+                    
+                    <p class="card-text">
+                        <i class="fas fa-user me-2"></i>Хозяин: {{ pet.owner }}
+                    </p>
+                    
+                    <a href="/patient/{{ pet.id }}" 
+                       class="btn btn-outline-primary w-100">
+                        Подробнее
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-paw fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">Пациенты не найдены</h4>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Чаты{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Заголовок и поиск -->
+    <div class="d-flex flex-column gap-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">
+                <i class="fas fa-comments text-primary me-2"></i>
+                Активные чаты
+                <span class="badge bg-primary ms-2">{{ chats|length }}</span>
+            </h3>
+        </div>
+        
+        <div class="row g-3 align-items-end">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Искать по имени, питомцу или ID..." 
+                           id="universalSearch">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="btn-group w-100">
+                    <button type="button" 
+                            class="btn btn-outline-primary active search-mode-btn" 
+                            data-mode="all">
+                        Все
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-primary search-mode-btn" 
+                            data-mode="chats">
+                        Только чаты
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-primary search-mode-btn" 
+                            data-mode="pets">
+                        Только питомцы
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список чатов -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-0">
+            {% if chats %}
+            <div class="list-group list-group-flush" id="chatList">
+                {% for chat_id, chat in chats.items() if chat.participants.doctor == vet.id %}
+                {% set client_id = chat.participants.client %}
+                {% set client = users.get(client_id) %}
+                {% set client_pets = pets.values()|selectattr('ownerId', 'equalto', client_id)|list %}
+                <a href="{{ url_for('chat_detail', chat_id=chat_id) }}" 
+                   class="list-group-item list-group-item-action border-0 py-3 chat-item"
+                   data-client-id="{{ client_id }}"
+                   data-pets="{{ client_pets|map(attribute='id')|join(',') }}"
+                   data-pet-names="{{ client_pets|map(attribute='name')|join(',') }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center" style="flex: 1; min-width: 0;">
+                            <img src="{{ client.photoUrl if client else url_for('static', filename='default-avatar.png') }}" 
+                                 class="rounded-circle me-3" 
+                                 style="width: 45px; height: 45px; object-fit: cover">
+                            <div style="min-width: 0">
+                                <div class="d-flex align-items-baseline gap-2 mb-1">
+                                    <h6 class="mb-0 text-truncate text-primary">{{ client.name if client else 'Неизвестный пользователь' }}</h6>
+                                </div>
+                                <div class="d-flex gap-1 mb-1">
+                                    {% if client_pets %}
+                                    {% for pet in client_pets[:3] %}
+                                    <span class="badge bg-light text-dark border small">
+                                        <i class="fas fa-paw me-1"></i>{{ pet.name }}
+                                    </span>
+                                    {% endfor %}
+                                    {% endif %}
+                                </div>
+                                {% set last_msg = chat.messages.values()|last %}
+                                <p class="text-muted text-truncate mb-0 small">
+                                    {% if last_msg %}
+                                    <span class="text-dark">{{ last_msg.text }}</span>
+                                    <span class="ms-2">{{ last_msg.timestamp|datetimeformat('%d.%m %H:%M') }}</span>
+                                    {% else %}
+                                    <span class="fst-italic">Нет сообщений</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-primary rounded-pill">{{ chat.messages|length }}</span>
+                        </div>
+                    </div>
+                </a>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-comment-slash fa-3x text-muted"></i>
+                    </div>
+                    <h5 class="text-muted">Нет активных чатов</h5>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="fas fa-comment-slash fa-3x text-muted"></i>
+                </div>
+                <h5 class="text-muted">Нет активных чатов</h5>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Доступные клиенты -->
+    {% if (users|length - existing_chats|length) > 0 %}
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Доступные клиенты</h5>
+            <small class="text-muted">{{ users|length - existing_chats|length }} доступно</small>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                {% for user_id, user in users.items() if user_id != vet.id and user_id not in existing_chats %}
+                {% set user_pets = pets.values()|selectattr('ownerId', 'equalto', user_id)|list %}
+                <div class="col-md-4">
+                    <div class="card client-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex flex-column gap-2">
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ user.photoUrl }}" 
+                                         class="rounded-circle me-3" 
+                                         style="width: 40px; height: 40px; object-fit: cover">
+                                    <h6 class="mb-0">{{ user.name }}</h6>
+                                </div>
+                                <div class="d-flex flex-wrap gap-1 mt-2">
+                                    {% for pet in user_pets %}
+                                    <span class="badge bg-light text-dark border small">
+                                        {{ pet.name }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <a href="{{ url_for('start_new_chat', client_id=user_id) }}" 
+                                   class="btn btn-primary btn-sm">
+                                    <i class="fas fa-comment-medical me-1"></i>Начать чат
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.querySelectorAll('.search-mode-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.search-mode-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        filterChats(document.getElementById('universalSearch').value);
+    });
+});
+
+document.getElementById('universalSearch').addEventListener('input', function(e) {
+    filterChats(e.target.value);
+});
+
+function filterChats(term) {
+    const searchTerm = term.toLowerCase();
+    const mode = document.querySelector('.search-mode-btn.active').dataset.mode;
+    
+    document.querySelectorAll('.chat-item').forEach(item => {
+        const clientId = item.dataset.clientId?.toLowerCase() || '';
+        const petIds = (item.dataset.pets?.toLowerCase() || '').split(',');
+        const petNames = (item.dataset.petNames?.toLowerCase() || '').split(',');
+        const name = item.querySelector('h6').textContent.toLowerCase();
+        const message = item.querySelector('p').textContent.toLowerCase();
+        
+        const matches = {
+            all: 
+                clientId.includes(searchTerm) || 
+                petIds.some(id => id.includes(searchTerm)) || 
+                petNames.some(name => name.includes(searchTerm)) ||
+                name.includes(searchTerm) ||
+                message.includes(searchTerm),
+            chats: 
+                name.includes(searchTerm) || 
+                message.includes(searchTerm) ||
+                clientId.includes(searchTerm),
+            pets: 
+                petNames.some(name => name.includes(searchTerm)) || 
+                petIds.some(id => id.includes(searchTerm))
+        }[mode];
+        
+        item.style.display = matches ? 'block' : 'none';
+    });
+}
+</script>
+{% endblock %}

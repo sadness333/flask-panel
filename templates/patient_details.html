@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}{{ pet.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .empty-state {
+        border: 2px dashed #dee2e6;
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+    .empty-state:hover {
+        border-color: #0d6efd;
+        background-color: #f0f7ff;
+    }
+    .weight-badge {
+        background: gray;
+        border: 1px solid rgba(13, 110, 253, 0.2);
+    }
+    .health-record-card {
+        border-left: 4px solid #0d6efd;
+    }
+</style>
+
+<div class="patient-details">
+    <!-- Заголовок -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-paw me-2"></i>{{ pet.name }}
+            <span class="badge bg-primary">{{ pet.type }}</span>
+        </h2>
+        <a href="/patients" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Назад
+        </a>
+    </div>
+
+    <!-- Основная информация -->
+    <div class="row g-4">
+        <!-- Левая колонка -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <img src="{{ pet.photoUrl }}" 
+                     class="card-img-top" 
+                     alt="{{ pet.name }}">
+                <div class="card-body">
+                    <h5 class="card-title">Основные данные</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Возраст:</span>
+                            <strong>{{ pet.age }} лет</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Порода:</span>
+                            <strong>{{ pet.breed }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Хозяин:</span>
+                            <strong>{{ owner.name }}</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка -->
+        <div class="col-lg-8">
+            <!-- Вкладки -->
+            <nav class="nav nav-tabs mb-4">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#health">
+                    Здоровье
+                </button>
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#nutrition">
+                    Питание
+                </button>
+            </nav>
+
+            <!-- Контент вкладок -->
+            <div class="tab-content">
+                <!-- Здоровье -->
+                <div class="tab-pane fade show active" id="health">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-heartbeat me-2"></i>Медкарта
+                                </h5>
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addHealthRecordModal">
+                                    <i class="fas fa-plus me-2"></i>Добавить запись
+                                </button>
+                            </div>
+
+                            {% if pet.get('HealthRecord') %}
+                                {% for record in pet.HealthRecord.values() %}
+                                <div class="card health-record-card mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <h6 class="mb-1">{{ record.title }}</h6>
+                                                <div class="text-muted small">
+                                                    <span class="me-3">
+                                                        <i class="fas fa-calendar-day me-1"></i>
+                                                        {{ record.date|datetimeformat('%d.%m.%Y') }}
+                                                    </span>
+                                                    <span>
+                                                        <i class="fas fa-calendar-times me-1"></i>
+                                                        {{ record.expirationDate|datetimeformat('%d.%m.%Y') }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="dropdown">
+                                                <button class="btn btn-link text-dark" type="button" 
+                                                    data-bs-toggle="dropdown">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" 
+                                                            href="/delete-health-record/{{ pet.id }}/{{ record.id }}">
+                                                            <i class="fas fa-trash me-2"></i>Удалить
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <p class="mb-2">{{ record.description }}</p>
+                                        {% if record.photoUrls %}
+                                        <div class="row g-2">
+                                            {% for photo in record.photoUrls %}
+                                            <div class="col-4">
+                                                <img src="{{ photo }}" class="img-thumbnail">
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-state rounded-3 p-5 text-center">
+                                    <i class="fas fa-file-medical fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">Медкарта пуста</h5>
+                                    <p class="text-muted mb-3">Здесь будут отображаться медицинские записи</p>
+                                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addHealthRecordModal">
+                                        Добавить первую запись
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Питание -->
+                <div class="tab-pane fade" id="nutrition">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-utensils me-2"></i>Питание
+                            </h5>
+                            
+                            <div class="row">
+                                <!-- Рекомендации -->
+                                <div class="col-md-6">
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-comment-medical me-2"></i>Рекомендации
+                                            </h6>
+                                            <button class="btn btn-link text-primary" data-bs-toggle="modal" data-bs-target="#addRecommendationModal">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        {% if pet.vetRecommendations and pet.vetRecommendations|length > 0 %}
+                                            <ul class="list-group">
+                                                {% for rec in pet.vetRecommendations %}
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <i class="fas fa-circle-check me-2"></i>
+                                                        {{ rec }}
+                                                    </div>
+                                                    <a href="/delete-recommendation/{{ pet.id }}/{{ loop.index0 }}" 
+                                                       class="btn btn-link text-danger">
+                                                        <i class="fas fa-times"></i>
+                                                    </a>
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% else %}
+                                            <div class="empty-state rounded-3 p-4 text-center">
+                                                <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+                                                <h5 class="text-muted">Нет рекомендаций</h5>
+                                                <p class="text-muted small mb-3">Добавьте рекомендации по питанию</p>
+                                                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRecommendationModal">
+                                                    Добавить рекомендацию
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Динамика веса -->
+                                <div class="col-md-6">
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-weight-scale me-2"></i>Динамика веса
+                                            </h6>
+                                            <button class="btn btn-link text-primary" data-bs-toggle="modal" data-bs-target="#addWeightModal">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        {% if pet.weightHistory %}
+                                        <div class="table-responsive">
+                                            <table class="table table-borderless align-middle">
+                                                <thead class="bg-light">
+                                                    <tr>
+                                                        <th>Дата</th>
+                                                        <th>Вес</th>
+                                                        <th>Заметки</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for record in pet.weightHistory.values()|sort(attribute='date', reverse=True) %}
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex flex-column">
+                                                                <span class="fw-500">{{ record.date|datetimeformat('%d.%m.%Y') }}</span>
+                                                                <small class="text-muted">{{ record.date|datetimeformat('%H:%M') }}</small>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge weight-badge rounded-pill px-3">
+                                                                {{ record.value|round(2) }} кг
+                                                            </span>
+                                                        </td>
+                                                        <td class="text-muted small">
+                                                            {{ record.notes or '—' }}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {% else %}
+                                        <div class="empty-state rounded-3 p-4 text-center">
+                                            <i class="fas fa-weight-scale fa-3x text-muted mb-3"></i>
+                                            <h5 class="text-muted">Нет данных о весе</h5>
+                                            <p class="text-muted small mb-3">Добавьте первое измерение веса</p>
+                                            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addWeightModal">
+                                                Добавить данные
+                                            </button>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Дневные калории -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-fire me-2"></i>Дневные калории
+                                            </h6>
+                                            <button class="btn btn-link text-primary" data-bs-toggle="modal" data-bs-target="#updateCaloriesModal">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="card border-0 bg-light">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h4 class="mb-0">{{ pet.nutrition.dailyCalories|default(0) }} ккал</h4>
+                                                        <small class="text-muted">Рекомендуемое количество калорий в день</small>
+                                                    </div>
+                                                    <div class="text-primary">
+                                                        <i class="fas fa-fire fa-2x"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                                
+                            <!-- История кормлений -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-utensils me-2"></i>История кормлений
+                                            </h6>
+                                            <button class="btn btn-link text-primary" data-bs-toggle="modal" data-bs-target="#addFeedingRecordModal">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        {% if pet.nutrition and pet.nutrition.feedingRecords and pet.nutrition.feedingRecords.values()|list|length > 0 %}
+                                        <div class="table-responsive">
+                                            <table class="table table-borderless align-middle">
+                                                <thead class="bg-light">
+                                                    <tr>
+                                                        <th>Дата</th>
+                                                        <th>Тип</th>
+                                                        <th>Название</th>
+                                                        <th>Количество</th>
+                                                        <th></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for record in pet.nutrition.feedingRecords.values() if record.type %}
+                                                    <tr>
+                                                        <td>
+                                                            {% if record.feedingTime is mapping %}
+                                                                {{ record.feedingTime.dayOfMonth }}.{{ record.feedingTime.monthValue }}.{{ record.feedingTime.year }}
+                                                            {% else %}
+                                                                {{ record.feedingTime|datetimeformat('%d.%m.%Y') }}
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-info rounded-pill">
+                                                                {{ record.type }}
+                                                            </span>
+                                                        </td>
+                                                        <td>{{ record.foodName }}</td>
+                                                        <td>{{ record.quantity }}</td>
+                                                        <td>
+                                                            <a href="/delete-feeding-record/{{ pet.id }}/{{ record.id }}" 
+                                                               class="btn btn-sm btn-outline-danger">
+                                                                <i class="fas fa-trash"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {% else %}
+                                        <div class="empty-state rounded-3 p-4 text-center">
+                                            <i class="fas fa-utensils fa-3x text-muted mb-3"></i>
+                                            <h5 class="text-muted">Нет данных о кормлениях</h5>
+                                            <p class="text-muted small mb-3">Добавьте первую запись о кормлении</p>
+                                            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addFeedingRecordModal">
+                                                Добавить запись
+                                            </button>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для медицинских записей -->
+<div class="modal fade" id="addHealthRecordModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="/add-health-record/{{ pet.id }}" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">Новая медицинская запись</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Тип записи</label>
+                            <select class="form-select" name="type" required>
+                                <option value="VACCINATION">Вакцинация</option>
+                                <option value="TREATMENT">Лечение</option>
+                                <option value="DIAGNOSIS">Диагноз</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Название</label>
+                            <input type="text" class="form-control" name="title" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Описание</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Дата проведения</label>
+                            <input type="date" class="form-control" name="date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" class="form-control" name="expirationDate">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Фотографии</label>
+                            <input type="file" class="form-control" name="photos" multiple accept="image/*">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для рекомендаций -->
+<div class="modal fade" id="addRecommendationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/add-recommendation/{{ pet.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Новая рекомендация</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <textarea class="form-control" name="text" 
+                                  placeholder="Введите текст рекомендации" 
+                                  rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления веса -->
+<div class="modal fade" id="addWeightModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/add-weight-record/{{ pet.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить запись о весе</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="weight" class="form-label">Вес (кг)</label>
+                        <input type="number" step="0.01" class="form-control" id="weight" name="value" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Дата и время</label>
+                        <input type="datetime-local" class="form-control" id="date" name="date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Заметки</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для обновления дневных калорий -->
+<div class="modal fade" id="updateCaloriesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/update-daily-calories/{{ pet.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Обновить дневные калории</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="dailyCalories" class="form-label">Дневные калории (ккал)</label>
+                        <input type="number" step="1" class="form-control" id="dailyCalories" name="dailyCalories" 
+                               value="{{ pet.nutrition.dailyCalories|default(0) }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления записи о кормлении -->
+<div class="modal fade" id="addFeedingRecordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/add-feeding-record/{{ pet.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить запись о кормлении</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="feedingType" class="form-label">Тип кормления</label>
+                        <select class="form-select" id="feedingType" name="type" required>
+                            <option value="DRY">Сухой корм</option>
+                            <option value="WET">Влажный корм</option>
+                            <option value="MIXED">Смешанный</option>
+                            <option value="TREATS">Лакомства</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="foodName" class="form-label">Название корма</label>
+                        <input type="text" class="form-control" id="foodName" name="foodName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Количество (г)</label>
+                        <input type="number" step="1" class="form-control" id="quantity" name="quantity" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="feedingDate" class="form-label">Дата</label>
+                        <input type="date" class="form-control" id="feedingDate" name="date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">Комментарий</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
