@@ -97,11 +97,6 @@ def datetimeformat(value, format='%d.%m.%Y %H:%M'):
 def load_db():
     # Get all data from Firebase Realtime Database
     return firebase_db.get()
-<<<<<<< HEAD
-ы
-
-=======
->>>>>>> parent of 89aadc2 (fix age)
 
 def save_db(data):
     # This function is kept for compatibility, but we'll use direct updates instead
