@@ -100,6 +100,12 @@ def load_db():
 
 def calculate_age(birth_year):
     try:
+        if isinstance(birth_year, int) or birth_year.isdigit():
+            # Если передан только год
+            year = int(birth_year)
+            return datetime.now().year - year
+            
+        # Если передана полная дата
         parts = birth_year.split('.')
         if len(parts) != 3:
             return "Некорректный формат"
@@ -112,25 +118,12 @@ def calculate_age(birth_year):
         birth_date = datetime(year, month, day)
 
         years = today.year - birth_date.year
-        months = today.month - birth_date.month
-        days = today.day - birth_date.day
-
-        if days < 0:
-            months -= 1
-            # Получаем количество дней в предыдущем месяце
-            if today.month == 1:
-                last_month = datetime(today.year - 1, 12, 1)
-            else:
-                last_month = datetime(today.year, today.month - 1, 1)
-            days += (today - last_month).days
-
-        if months < 0:
+        if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
             years -= 1
-            months += 12
 
-        return format_age(years, months)
-    except Exception:
-        return "Ошибка в дате"
+        return years
+    except (ValueError, TypeError, AttributeError):
+        return "Некорректный формат"
 
 def format_age(years, months):
     def format_years(years):
