@@ -226,7 +226,7 @@ def get_appointment_data(appointment):
         "ownerName": owner.get('name', 'Неизвестно'),
         "petName": pet.get('name', 'Безымянный'),
         "petType": pet.get('type', 'Неизвестный тип'),
-        "petAge": pet.get('age', '—'),
+        "petAge": pet.get('birthYear', '—'),
         "petPhoto": pet.get('photoUrl', ''),
         "doctorName": doctor.get('name', 'Врач не указан')
     }
