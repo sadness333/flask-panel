@@ -97,62 +97,7 @@ def datetimeformat(value, format='%d.%m.%Y %H:%M'):
 def load_db():
     # Get all data from Firebase Realtime Database
     return firebase_db.get()
-
-def calculate_age(birth_year):
-    try:
-        parts = birth_year.split('.')
-        if len(parts) != 3:
-            return "Некорректный формат"
-
-        day = int(parts[0])
-        month = int(parts[1])
-        year = int(parts[2])
-
-        today = datetime.now()
-        birth_date = datetime(year, month, day)
-
-        years = today.year - birth_date.year
-        months = today.month - birth_date.month
-        days = today.day - birth_date.day
-
-        if days < 0:
-            months -= 1
-            # Получаем количество дней в предыдущем месяце
-            if today.month == 1:
-                last_month = datetime(today.year - 1, 12, 1)
-            else:
-                last_month = datetime(today.year, today.month - 1, 1)
-            days += (today - last_month).days
-
-        if months < 0:
-            years -= 1
-            months += 12
-
-        return format_age(years, months)
-    except Exception:
-        return "Ошибка в дате"
-
-def format_age(years, months):
-    def format_years(years):
-        if years == 0:
-            return ""
-        if years % 10 == 1 and years % 100 != 11:
-            return f"{years} год"
-        if years % 10 in [2, 3, 4] and (years % 100 < 10 or years % 100 >= 20):
-            return f"{years} года"
-        return f"{years} лет"
-
-    def format_months(months):
-        if months == 0:
-            return ""
-        if months % 10 == 1 and months % 100 != 11:
-            return f"{months} месяц"
-        if months % 10 in [2, 3, 4] and (months % 100 < 10 or months % 100 >= 20):
-            return f"{months} месяца"
-        return f"{months} месяцев"
-
-    parts = [format_years(years), format_months(months)]
-    return " ".join(filter(None, parts))
+ы
 
 
 def save_db(data):

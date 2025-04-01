@@ -68,8 +68,11 @@
                     data-search="{{ pet.name.lower() }} {{ pet.type.lower() }} {{ pet.breed.lower() }} {{ pet.birthYear }}">
                 {{ pet.name }} 
                 <small class="text-muted">
-                    ({{ pet.type }} • {{ pet.breed }} • Возраст: {{ calculate_age(pet.birthYear) }})
+                    ({{ pet.type }} • {{ pet.breed }} • Возраст: <span id="age_{{ pet.id }}"></span>)
                 </small>
+                <script>
+                    document.getElementById('age_{{ pet.id }}').textContent = calculateAge({{ pet.birthYear }});
+                </script>
             </option>
             {% endfor %}
         </select>
@@ -137,6 +140,11 @@
 </style>
 
 <script>
+function calculateAge(birthYear) {
+    const currentYear = new Date().getFullYear();
+    return `${currentYear - birthYear} лет`;
+}
+
 function filterPets() {
     try {
         const filter = document.getElementById('petFilter').value.toLowerCase().trim();
