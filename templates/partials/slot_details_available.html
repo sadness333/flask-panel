@@ -68,7 +68,7 @@
                     data-search="{{ pet.name.lower() }} {{ pet.type.lower() }} {{ pet.breed.lower() }} {{ pet.birthYear }}">
                 {{ pet.name }} 
                 <small class="text-muted">
-                    ({{ pet.type }} • {{ pet.breed }} • Возраст: {{ pet.birthYear }})
+                    ({{ pet.type }} • {{ pet.breed }} • Возраст: {{ calculate_age(pet.birthYear) }})
                 </small>
             </option>
             {% endfor %}

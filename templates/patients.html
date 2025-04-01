@@ -50,7 +50,7 @@
                     <h5 class="card-title">{{ pet.name }}</h5>
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <span class="badge bg-primary">{{ pet.type }}</span>
-                        <span class="text-muted small">{{ pet.birthYear }}</span>
+                        <span class="text-muted small">{{ calculate_age(pet.birthYear) }}</span>
                     </div>
                     
                     <p class="card-text">
