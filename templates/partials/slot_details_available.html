@@ -65,10 +65,10 @@
             <option value="">   Выберите питомца   </option>
             {% for pet in pets %}
             <option value="{{ pet.id }}" 
-                    data-search="{{ pet.name.lower() }} {{ pet.type.lower() }} {{ pet.breed.lower() }} {{ pet.age }}">
+                    data-search="{{ pet.name.lower() }} {{ pet.type.lower() }} {{ pet.breed.lower() }} {{ calculate_age(pet.birthYear) }}">
                 {{ pet.name }} 
                 <small class="text-muted">
-                    ({{ pet.type }} • {{ pet.breed }} • Возраст: {{ pet.age }})
+                    ({{ pet.type }} • {{ pet.breed }} • Возраст: {{ calculate_age(pet.birthYear) }})
                 </small>
             </option>
             {% endfor %}
@@ -175,4 +175,4 @@ function filterPets() {
 
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', filterPets);
-</script> 
+</script>
