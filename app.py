@@ -5,6 +5,7 @@ import firebase_admin
 from firebase_admin import credentials, db, storage
 import os
 import uuid
+from dateutil.relativedelta import relativedelta
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
@@ -161,6 +162,26 @@ def logout():
     session.pop('vet_id', None)
     return redirect(url_for('login'))
 
+def calculate_pet_age(birth_date):
+    if not birth_date:
+        return '—'
+    try:
+        if isinstance(birth_date, str):
+            birth_date = datetime.strptime(birth_date, '%d.%m.%Y')
+        now = datetime.now()
+        diff = relativedelta(now, birth_date)
+        
+        if diff.years > 0:
+            if diff.months > 0:
+                return f"{diff.years} лет {diff.months} мес"
+            return f"{diff.years} лет"
+        elif diff.months > 0:
+            return f"{diff.months} мес"
+        else:
+            return "< 1 мес"
+    except Exception:
+        return '—'
+
 def get_appointment_data(appointment):
     db = load_db()
     users = db.get('users', {}) or {}
@@ -176,7 +197,7 @@ def get_appointment_data(appointment):
         "ownerName": owner.get('name', 'Неизвестно'),
         "petName": pet.get('name', 'Безымянный'),
         "petType": pet.get('type', 'Неизвестный тип'),
-        "petAge": pet.get('age', '—'),
+        "petAge": calculate_pet_age(pet.get('birthYear')),
         "petPhoto": pet.get('photoUrl', ''),
         "doctorName": doctor.get('name', 'Врач не указан')
     }
