@@ -47,10 +47,7 @@
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Возраст:</span>
-                            <strong id="petAge"></strong>
-                            <script>
-                                document.getElementById('petAge').textContent = calculateAge('{{ pet.birthYear }}');
-                            </script>
+                            <strong>{{ pet.age }} лет</strong>
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Порода:</span>

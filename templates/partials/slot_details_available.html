@@ -65,14 +65,11 @@
             <option value="">   Выберите питомца   </option>
             {% for pet in pets %}
             <option value="{{ pet.id }}" 
-                    data-search="{{ pet.name.lower() }} {{ pet.type.lower() }} {{ pet.breed.lower() }} {{ pet.birthYear }}">
+                    data-search="{{ pet.name.lower() }} {{ pet.type.lower() }} {{ pet.breed.lower() }} {{ pet.age }}">
                 {{ pet.name }} 
                 <small class="text-muted">
-                    ({{ pet.type }} • {{ pet.breed }} • Возраст: <span id="age_{{ pet.id }}"></span>)
+                    ({{ pet.type }} • {{ pet.breed }} • Возраст: {{ pet.age }})
                 </small>
-                <script>
-                    document.getElementById('age_{{ pet.id }}').textContent = calculateAge({{ pet.birthYear }});
-                </script>
             </option>
             {% endfor %}
         </select>
@@ -140,11 +137,6 @@
 </style>
 
 <script>
-function calculateAge(birthYear) {
-    const currentYear = new Date().getFullYear();
-    return `${currentYear - birthYear} лет`;
-}
-
 function filterPets() {
     try {
         const filter = document.getElementById('petFilter').value.toLowerCase().trim();
@@ -183,4 +175,4 @@ function filterPets() {
 
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', filterPets);
-</script>
+</script> 
