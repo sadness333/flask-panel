@@ -158,8 +158,8 @@
             const navLinks = document.querySelectorAll('.nav-link');
             
             navLinks.forEach(link => {
+                link.classList.remove('active');
                 if (link.getAttribute('href') === currentPath) {
-                    link.classList.remove('active');
                     link.classList.add('active');
                 }
             });
