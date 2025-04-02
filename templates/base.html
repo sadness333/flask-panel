@@ -159,6 +159,7 @@
             
             navLinks.forEach(link => {
                 if (link.getAttribute('href') === currentPath) {
+                    link.classList.remove('active');
                     link.classList.add('active');
                 }
             });
