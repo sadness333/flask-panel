@@ -5,7 +5,6 @@ import firebase_admin
 from firebase_admin import credentials, db, storage
 import os
 import uuid
-from dateutil.relativedelta import relativedelta
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
@@ -35,18 +34,8 @@ STATUS_COLORS = {
 }
 
 # Initialize Firebase with environment variables
-cred = credentials.Certificate({
-    'type': os.getenv('FIREBASE_TYPE'),
-    'project_id': os.getenv('FIREBASE_PROJECT_ID'),
-    'private_key_id': os.getenv('FIREBASE_PRIVATE_KEY_ID'),
-    'private_key': os.getenv('FIREBASE_PRIVATE_KEY'),
-    'client_email': os.getenv('FIREBASE_CLIENT_EMAIL'),
-    'client_id': os.getenv('FIREBASE_CLIENT_ID'),
-    'auth_uri': os.getenv('FIREBASE_AUTH_URI'),
-    'token_uri': os.getenv('FIREBASE_TOKEN_URI'),
-    'auth_provider_x509_cert_url': os.getenv('FIREBASE_AUTH_PROVIDER_X509_CERT_URL'),
-    'client_x509_cert_url': os.getenv('FIREBASE_CLIENT_X509_CERT_URL')
-})
+cred = credentials.Certificate("mypolka-4cf39-firebase-adminsdk-8s6z1-b700ab00cb.json")  # Укажи правильный путь
+
 
 firebase_admin.initialize_app(cred, {
     'databaseURL': os.getenv('FIREBASE_DATABASE_URL'),
@@ -102,6 +91,79 @@ def load_db():
 def save_db(data):
     # This function is kept for compatibility, but we'll use direct updates instead
     pass
+
+# Add this function to your app.py file, perhaps near your other utility functions
+
+def calculate_pet_age(birth_year_str):
+    try:
+        # Split the date string (assuming format DD.MM.YYYY)
+        parts = birth_year_str.split('.')
+        if len(parts) != 3:
+            return "Некорректный формат"
+        
+        day = int(parts[0])
+        month = int(parts[1])
+        year = int(parts[2])
+        
+        # Get current date
+        today = datetime.now()
+        
+        # Create birth date
+        birth_date = datetime(year, month, day)
+        
+        # Calculate years and months
+        years = today.year - birth_date.year
+        months = today.month - birth_date.month
+        days = today.day - birth_date.day
+        
+        # Adjust for negative days
+        if days < 0:
+            months -= 1
+            # Get days in the previous month
+            if today.month == 1:
+                prev_month = 12
+                prev_year = today.year - 1
+            else:
+                prev_month = today.month - 1
+                prev_year = today.year
+            
+            last_day_of_prev_month = (datetime(prev_year, prev_month + 1, 1) - timedelta(days=1)).day
+            days += last_day_of_prev_month
+        
+        # Adjust for negative months
+        if months < 0:
+            years -= 1
+            months += 12
+        
+        return format_age(years, months)
+    except Exception as e:
+        print(f"Error calculating age: {e}")
+        return "Ошибка в дате"
+
+def format_age(years, months):
+    # Format years with proper Russian grammar
+    if years == 0:
+        years_text = ""
+    elif years % 10 == 1 and years % 100 != 11:
+        years_text = f"{years} год"
+    elif years % 10 in [2, 3, 4] and (years % 100 < 10 or years % 100 >= 20):
+        years_text = f"{years} года"
+    else:
+        years_text = f"{years} лет"
+    
+    # Format months with proper Russian grammar
+    if months == 0:
+        months_text = ""
+    elif months % 10 == 1 and months % 100 != 11:
+        months_text = f"{months} месяц"
+    elif months % 10 in [2, 3, 4] and (months % 100 < 10 or months % 100 >= 20):
+        months_text = f"{months} месяца"
+    else:
+        months_text = f"{months} месяцев"
+    
+    # Join non-empty parts
+    result = " ".join(filter(None, [years_text, months_text]))
+    return result if result else "0 месяцев"
 
 # Function to upload a file to Firebase Storage
 def upload_file_to_storage(file, folder='images'):
@@ -162,26 +224,6 @@ def logout():
     session.pop('vet_id', None)
     return redirect(url_for('login'))
 
-def calculate_pet_age(birth_date):
-    if not birth_date:
-        return '—'
-    try:
-        if isinstance(birth_date, str):
-            birth_date = datetime.strptime(birth_date, '%d.%m.%Y')
-        now = datetime.now()
-        diff = relativedelta(now, birth_date)
-        
-        if diff.years > 0:
-            if diff.months > 0:
-                return f"{diff.years} лет {diff.months} мес"
-            return f"{diff.years} лет"
-        elif diff.months > 0:
-            return f"{diff.months} мес"
-        else:
-            return "< 1 мес"
-    except Exception:
-        return '—'
-
 def get_appointment_data(appointment):
     db = load_db()
     users = db.get('users', {}) or {}
@@ -197,7 +239,7 @@ def get_appointment_data(appointment):
         "ownerName": owner.get('name', 'Неизвестно'),
         "petName": pet.get('name', 'Безымянный'),
         "petType": pet.get('type', 'Неизвестный тип'),
-        "petAge": calculate_pet_age(pet.get('birthYear')),
+        "petAge": pet.get('age', '—'),
         "petPhoto": pet.get('photoUrl', ''),
         "doctorName": doctor.get('name', 'Врач не указан')
     }
@@ -306,6 +348,8 @@ def patients():
     # Фильтрация питомцев
     filtered_pets = []
     for pet_id, pet in pets.items():
+        if 'birthYear' in pet:
+            pet['age'] = calculate_pet_age(pet['birthYear'])
         if (not search_query or search_query.lower() in pet['name'].lower()) \
            and (not pet_type or pet['type'] == pet_type):
             filtered_pets.append({
@@ -334,6 +378,9 @@ def patient_details(pet_id):
     
     if not pet:
         return render_template('404.html'), 404
+
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
     
     owner = users.get(pet['ownerId'], {})
     return render_template(
@@ -492,6 +539,9 @@ def add_weight_record(pet_id):
     if not pet:
         return "Питомец не найден", 404
 
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
+
     try:
         weight = float(request.form.get('value'))
         date_str = request.form.get('date')
@@ -546,6 +596,9 @@ def add_health_record(pet_id):
     pet = pets.get(pet_id)
     if not pet:
         return "Питомец не найден", 404
+    
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
 
     # Handle photo upload
     photo_urls = []
@@ -608,6 +661,9 @@ def delete_health_record(pet_id, record_id):
         if health_record and 'photoUrls' in health_record:
             for photo_url in health_record['photoUrls']:
                 delete_file_from_storage(photo_url)
+
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
                 
         # Remove the record from the database
         pet['HealthRecord'].pop(record_id, None)
@@ -630,6 +686,9 @@ def add_recommendation(pet_id):
         pet['vetRecommendations'].append(recommendation)
         firebase_db.child('pets').child(pet_id).set(pet)
     
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
+    
     return redirect(url_for('patient_details', pet_id=pet_id))
 
 @app.route('/delete-recommendation/<pet_id>/<int:index>')
@@ -643,6 +702,9 @@ def delete_recommendation(pet_id, index):
     if pet and 'vetRecommendations' in pet and 0 <= index < len(pet['vetRecommendations']):
         pet['vetRecommendations'].pop(index)
         firebase_db.child('pets').child(pet_id).set(pet)
+    
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
     
     return redirect(url_for('patient_details', pet_id=pet_id))
 
@@ -956,6 +1018,9 @@ def book_slot():
         if not pet:
             flash('Питомец не найден')
             return redirect(request.referrer)
+        
+        if 'birthYear' in pet:
+            pet['age'] = calculate_pet_age(pet['birthYear'])
 
         # Проверка занятости слота
         doctor = doctors.get(vet_id, {})
@@ -1049,6 +1114,9 @@ def update_daily_calories(pet_id):
     if not pet:
         return "Питомец не найден", 404
     
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
+    
     # Получаем данные из формы
     daily_calories = request.form.get('dailyCalories', 0)
     notes = request.form.get('notes', '')
@@ -1077,6 +1145,9 @@ def add_feeding_record(pet_id):
     
     if not pet:
         return "Питомец не найден", 404
+
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
     
     try:
         # Получаем данные из формы
@@ -1176,6 +1247,9 @@ def delete_feeding_record(pet_id, record_id):
         
         # Сохраняем в Firebase
         firebase_db.child('pets').child(pet_id).set(pet)
+    
+    if 'birthYear' in pet:
+        pet['age'] = calculate_pet_age(pet['birthYear'])
     
     return redirect(url_for('patient_details', pet_id=pet_id))
 
