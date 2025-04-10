@@ -260,19 +260,24 @@ def get_stats(db, vet_id):
     appointments = db.get('appointments', {}) or {}
     chats = db.get('chats', {}) or {}
     
+    unread_messages = 0
+    for chat in chats.values():
+        if 'participants' not in chat:
+            continue
+            
+        if chat['participants'].get('doctor') == vet_id:
+            for msg in chat.get('messages', {}).values():
+                if msg['senderId'] != vet_id and not any(
+                    reply['senderId'] == vet_id 
+                    and reply['timestamp'] > msg['timestamp']
+                    for reply in chat.get('messages', {}).values()
+                ):
+                    unread_messages += 1
+    
     stats = {
         'total_appointments': len([a for a in appointments.values() if a['doctorId'] == vet_id]),
         'active_patients': len(set(a['petId'] for a in appointments.values() if a['doctorId'] == vet_id)),
-        'unread_messages': sum(
-            1 for chat in chats.values()
-            if chat['participants']['doctor'] == vet_id
-            for msg in chat.get('messages', {}).values()
-            if msg['senderId'] != vet_id  
-            and not any(
-                reply['senderId'] == vet_id 
-                and reply['timestamp'] > msg['timestamp']
-                for reply in chat.get('messages', {}).values()
-            )),
+        'unread_messages': unread_messages,
         'chart_labels': [(today - timedelta(days=i)).strftime("%d.%m") for i in range(6, -1, -1)],
         'chart_data': [
             len([a for a in appointments.values() 
@@ -445,16 +450,17 @@ def chat_list():
     pets = db.get('pets', {}) or {}
     doctors = db.get('doctors', {}) or {}
     
-    # Только чаты текущего врача
+    # Только чаты текущего врача (пропускаем чаты без ключа 'participants', например AI чаты)
     vet_chats = {
         k: v for k, v in chats.items() 
-        if v['participants']['doctor'] == vet_id
+        if 'participants' in v and v['participants'].get('doctor') == vet_id
     }
     
     # Клиенты с существующими чатами
     existing_clients = {
-        chat['participants']['client'] 
+        chat['participants'].get('client') 
         for chat in vet_chats.values()
+        if 'participants' in chat and 'client' in chat['participants']
     }
     
     return render_template('chat_list.html', 
@@ -479,10 +485,18 @@ def chat_detail(chat_id):
     chat = chats.get(chat_id)
     vet_id = session['vet_id']
     
-    if not chat or chat['participants']['doctor'] != vet_id:
+    # Проверяем наличие ключа 'participants' в чате
+    if not chat or 'participants' not in chat:
+        return "Чат не найден", 404
+        
+    # Проверяем, что это чат текущего врача
+    if chat['participants'].get('doctor') != vet_id:
         return "Чат не найден", 404
     
-    client_id = chat['participants']['client']
+    client_id = chat['participants'].get('client')
+    if not client_id:
+        return "Чат не найден (нет клиента)", 404
+        
     owner = users.get(client_id)
     pet = next((p for p in pets.values() if p['ownerId'] == client_id), None)
 
